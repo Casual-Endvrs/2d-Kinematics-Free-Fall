@@ -618,21 +618,43 @@ class vid_fbf:
         conv_fctr = 1 if self.m_per_pxl is None else self.m_per_pxl
         units = "pxls" if self.m_per_pxl is None else "m"
 
+        a_x = self.best_fit_values["a_x"]
+        a_y = self.best_fit_values["a_y"]
+        v_0_x = self.best_fit_values["v_0_x"]
+        v_0_y = self.best_fit_values["v_0_y"]
+        theta = self.best_fit_values["theta"]
+
+        theta_correction = None
+        if self.assume_a_x_zero:
+            theta_correction = np.arctan(a_x / a_y)
+        elif self.image_theta is not None:
+            theta_correction = self.image_theta
+
+        if theta_correction is not None:
+            cos_t = np.cos(theta_correction)
+            sin_t = np.sin(theta_correction)
+
+            R = np.array([[cos_t, -sin_t], [sin_t, cos_t]])
+            [v_0_x, v_0_y] = R @ np.array([v_0_x, v_0_y])
+            [a_x, a_y] = R @ np.array([a_x, a_y])
+
+            theta += theta_correction
+
         fit_report = "  \n".join(
             [
                 "---",
                 "# Fit results",
                 "## x-axis values:",
                 # f"* x_0 = {conv_fctr * self.best_fit_values['x_0']:.2f} {units}",
-                f"* v_0_x = {conv_fctr * self.best_fit_values['v_0_x']:.2f} {units}/s",
-                f"* a_x = {conv_fctr * self.best_fit_values['a_x']:.2f} {units}/s$^2$",
+                f"* v_0_x = {conv_fctr * v_0_x:.2f} {units}/s",
+                f"* a_x = {conv_fctr * a_x:.2f} {units}/s$^2$",
                 "## y-axis values:",
                 # f"* y_0 = {conv_fctr * self.best_fit_values['y_0']:.2f} {units}",
-                f"* v_0_y = {conv_fctr * self.best_fit_values['v_0_y']:.2f} {units}/s",
-                f"* a_y = g = {conv_fctr * self.best_fit_values['a_y']:.2f} {units}/s$^2$",
+                f"* v_0_y = {conv_fctr * v_0_y:.2f} {units}/s",
+                f"* a_y = g = {conv_fctr * a_y:.2f} {units}/s$^2$",
                 "## General values:",
                 f"* v_0 = {conv_fctr * self.best_fit_values['v_0']:.2f} {units}/s",
-                f"* theta = {180 / np.pi * self.best_fit_values['theta']:.2f} degrees",
+                f"* theta = {180 / np.pi * theta:.2f} degrees",
             ]
         )
 

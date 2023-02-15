@@ -131,6 +131,7 @@ def panel_mjr_actions():
             "Length between markers (centimeters)",
             key="ref_length",
             min_value=0.0,
+            format="%.3f",
             on_change=set_ref_len_meters,
         )
         if st.session_state["vid_fbf"].m_per_pxl in [0, 0.0, None]:
