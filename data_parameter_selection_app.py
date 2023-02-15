@@ -218,11 +218,11 @@ def panel_frame_controls():
 def setup_app():
     st.session_state["vid_fbf"].show_calibration_markers = True
 
-    cols = st.columns([1, 1, 10])
-    with cols[0]:
-        st.button("Save Object", on_click=st.session_state["vid_fbf"].save_obj)
-    with cols[1]:
-        st.button("Load Object", on_click=st.session_state["vid_fbf"].load_obj)
+    # cols = st.columns([1, 1, 10])
+    # with cols[0]:
+    #     st.button("Save Object", on_click=st.session_state["vid_fbf"].save_obj)
+    # with cols[1]:
+    #     st.button("Load Object", on_click=st.session_state["vid_fbf"].load_obj)
 
     if st.session_state["vid_fbf"].file_name is None:
         print("\n" * 5)
