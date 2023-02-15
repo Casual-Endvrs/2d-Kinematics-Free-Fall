@@ -1,13 +1,8 @@
+import numpy as np
 import streamlit as st
-import cv2
 from PIL import Image
 from streamlit_image_coordinates import streamlit_image_coordinates as sic
 import tempfile
-
-from cls_vid_fbf import vid_fbf
-
-
-import numpy as np
 
 #! make auto-advance on click an option
 
@@ -219,7 +214,9 @@ def panel_frame_controls():
         st.button("Next Frame:", on_click=next_frame, key="btn_nxt_frm")
 
 
-def app():
+def setup_app():
+    st.session_state["vid_fbf"].show_calibration_markers = True
+
     cols = st.columns([1, 1, 10])
     with cols[0]:
         st.button("Save Object", on_click=st.session_state["vid_fbf"].save_obj)
@@ -227,6 +224,7 @@ def app():
         st.button("Load Object", on_click=st.session_state["vid_fbf"].load_obj)
 
     if st.session_state["vid_fbf"].file_name is None:
+        print("\n" * 5)
         st.file_uploader(
             label="Choose video:",
             type=["mp4", "mov"],

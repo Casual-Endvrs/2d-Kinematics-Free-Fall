@@ -22,11 +22,14 @@ class vid_fbf:
         self.frame_image: Union[None, np.ndarray] = None
 
         #! Video editing variables
-        self.composite_image: Union[None, List[int]] = None
+        self.composite_image = None  # : Union[None, List[int]]
+        self.fit_image = None  # : Union[None, List[int]]
+
         self.bkgrnd_frm_num: int = 0
         self.ball_radius = 15
         self.source_resolution: Union[None, List[int]] = None
         self.display_resolution: Union[None, str, List[int]] = None
+        self.show_calibration_markers: bool = True
 
         #! 2D Kinematics specific variables
         self.ball_frm_locs: Union[None, np.ndarray[(Any, 2), int]] = None
@@ -34,8 +37,21 @@ class vid_fbf:
         self.plum_line_markers: Union[None, np.ndarray[(Any, 2), int]] = None
         self.image_theta: Union[None, float] = None
 
+        self.assume_a_x_zero: bool = False
+
         self.x_fit_result = None
         self.y_fit_result = None
+
+        self.best_fit_values: Union[None, Dict] = None
+        self.usr_exp_values: Dict = {
+            "x_0": 0.0,
+            "v_0_x": 0.0,
+            "y_0": 0.0,
+            "v_0_y": 0.0,
+            "v_0": 0.0,
+            "theta": 0.0,
+            "gravity": 0.0,
+        }
 
         #! Equation variables
         self.frame_rate: float = 30.0
@@ -48,6 +64,13 @@ class vid_fbf:
         #! location of ball markers in pxls & m
         self.pos_pxls: Union[None, np.ndarray[(Any, 2), int]] = None
         self.pos_m: Union[None, np.ndarray[(Any, 2), float]] = None
+
+        #! User experimentation
+        # self.v_0: float = 0.0
+        # self.v_0_x: float = 0.0
+        # self.v_0_y: float = 0.0
+        # self.theta_0: float = 0.0
+        # self.gravity: float = 9.8
 
     def load_video(self, file_path: Path, resolution: str = "original"):
         self.display_frame_num = 0
@@ -194,14 +217,23 @@ class vid_fbf:
             else:
                 frame_num = self.display_frame_num
 
+        self.show_calibration_markers = True
+
+        self.display_frame_num = frame_num
+
         if frame_num == -1:
-            self.display_frame_num = frame_num
             self.create_composite_image()
             self.frame_image = self.composite_image
-            # self.resize_display_frame()
+
+            self.show_calibration_markers = False
+
+        elif frame_num == -2:
+            self.create_fit_frame()
+            self.frame_image = self.composite_image
+
+            self.show_calibration_markers = False
 
         elif 0 <= frame_num < self.ttl_frms:
-            self.display_frame_num = frame_num
             self.frame_image = np.copy(self.frames_src[self.display_frame_num])
             self.plot_ball_marker()
             # self.plot_length_markers()
@@ -212,8 +244,10 @@ class vid_fbf:
             self.frame_image = None
             return
 
-        self.plot_length_markers()
-        self.plot_plum_line_markers()
+        if self.show_calibration_markers:
+            self.plot_length_markers()
+            self.plot_plum_line_markers()
+
         self.resize_display_frame()
 
     def get_frame(self, frame_num: Union[None, int] = None):
@@ -256,7 +290,6 @@ class vid_fbf:
         if ball_loc[0] == 0 and ball_loc[1] == 0:
             return
 
-        print(f"\toriginal: {ball_loc}")
         x_y = ball_loc
         self.plot_marker(x_y=x_y, color=(0, 255, 0))
 
@@ -271,12 +304,6 @@ class vid_fbf:
         else:
             self.length_markers_locs[0] = self.length_markers_locs[1]
             self.length_markers_locs[1] = x_y
-
-    # self.ref_len_pxls: Union[None, int] = None
-    # self.ref_len_m: Union[None, float] = None
-    # self.m_per_pxl: Union[None, float] = None
-    # self.plum_line_markers: Union[None, np.ndarray[(Any, 2), int]] = None
-    # self.image_theta: Union[None, float] = None
 
     def set_ref_len_meters(self, len_m: float):
         self.ref_len_m = len_m
@@ -367,6 +394,11 @@ class vid_fbf:
         )
 
     #! Video editing methods
+    def create_fit_frame(self):
+        self.create_composite_image()
+        self.draw_parametric_fit()
+        self.draw_user_line()
+
     def scale_pixel_loc(
         self, width: int, height: int, to_original_res: bool = True
     ) -> List[int]:
@@ -412,18 +444,14 @@ class vid_fbf:
 
         self.composite_image = np.array(background)
 
-    def plot_kin_eqns(self):
-        if self.composite_image is None:
-            self.create_composite_image()
+        self.fit_data()
 
+    def draw_parametric_fit(self):
         if None in [self.x_fit_result, self.y_fit_result]:
             self.fit_data()
 
-        self.draw_parametric_fit()
-
-    def draw_parametric_fit(self):
         draw_points = (
-            np.asarray([self.x_fit_result.best_fit, self.y_fit_result.best_fit]).T
+            np.asarray([self.x_fit_result.best_fit, -1 * self.y_fit_result.best_fit]).T
         ).astype(np.int32)
         cv2.polylines(self.composite_image, [draw_points], False, (0, 255, 0))
 
@@ -442,10 +470,52 @@ class vid_fbf:
         # draw_points = (np.asarray([xs, ys]).T).astype(np.int32)
         # cv2.polylines(self.frames[0], [draw_points], False, (255, 0, 0))
 
+    def draw_user_line(self):
+        self.update_best_fit_values()
+
+        num_data_pnts = np.shape(self.pos_pxls)[0]
+
+        steps_per_frm = 1
+        num_steps = steps_per_frm * num_data_pnts
+        t_max = self.frame_time * num_data_pnts
+        ts = np.linspace(0, t_max, num_steps)
+        # dt = self.frame_time / steps_per_frm
+        # ts = np.arange(0, t_max + dt, dt)
+
+        x_0 = self.usr_exp_values["x_0"]
+        v_0_x = self.usr_exp_values["v_0_x"]
+        a_x = 0
+        y_0 = self.usr_exp_values["y_0"]
+        v_0_y = self.usr_exp_values["v_0_y"]
+        a_y = self.usr_exp_values["gravity"]
+        # v_0 = self.usr_exp_values["v_0"]
+        # theta = self.usr_exp_values["theta"]
+
+        xs = self.k_displacement(ts, x_0=x_0, v_0=v_0_x, a=a_x)
+        ys = self.k_displacement(ts, x_0=y_0, v_0=v_0_y, a=a_y)
+
+        draw_points = (np.asarray([xs, -1 * ys]).T).astype(np.int32)
+        cv2.polylines(self.composite_image, [draw_points], False, (255, 0, 0))
+
     #! Equation variables
-    def calc_ball_displacements(self):
-        ball_has_pos = self.ball_frm_locs[:, 0] != 0
-        self.pos_pxls = self.ball_frm_locs[ball_has_pos, :]
+    def create_ball_pos_pxls(self):
+        locs = np.copy(self.ball_frm_locs).transpose()
+
+        ts = self.frame_time * np.arange(np.shape(locs)[1])
+        locs = np.array([ts, locs[0], locs[1]])
+        locs = locs.transpose()
+
+        ball_has_pos = locs[:, 1] != 0
+        self.pos_pxls = locs[ball_has_pos, :]
+
+        # t_0 = 0
+        self.pos_pxls[:, 0] -= self.pos_pxls[0, 0]
+
+        # inverting the y-axis
+        self.pos_pxls[:, 2] *= -1.0
+
+    def calc_ball_pos_meters(self):
+        self.create_ball_pos_pxls()
 
         #! origin translation should be moved to an export function
         # # set origin to be at the first ball
@@ -456,17 +526,26 @@ class vid_fbf:
         # self.pos_pxls[:, 1] = -1 * self.pos_pxls[:, 1] + self.pos_pxls[0, 1]
 
         # convert position in pxls --> meters
-        self.pos_m = self.pos_pxls * self.m_per_pxl
+        if self.m_per_pxl is None:
+            self.pos_m = None
+        else:
+            self.pos_m = np.copy(self.pos_pxls)
+            self.pos_m[1] = self.pos_m[1] * self.m_per_pxl
+            self.pos_m[2] = self.pos_m[2] * self.m_per_pxl
 
     def fit_data(self):
+        self.create_ball_pos_pxls()
+
         self.fit_x_data()
         self.fit_y_data()
 
-    def fit_x_data(self):
-        self.calc_ball_displacements()
+        self.update_best_fit_values()
 
-        data = self.pos_pxls[:, 0]
-        ts = self.frame_time * np.arange(len(data))
+    def fit_x_data(self):
+        self.create_ball_pos_pxls()
+
+        data = self.pos_pxls[:, 1]
+        ts = self.pos_pxls[:, 0]
 
         model = Model(self.k_displacement)
         params = Parameters()
@@ -476,21 +555,181 @@ class vid_fbf:
         self.x_fit_result = model.fit(data, t=ts, params=params)
 
     def fit_y_data(self):
-        self.calc_ball_displacements()
+        self.create_ball_pos_pxls()
 
-        data = self.pos_pxls[:, 1]
-        ts = self.frame_time * np.arange(len(data))
+        data = self.pos_pxls[:, 2]
+        ts = self.pos_pxls[:, 0]
+
+        a_0 = 1e-2
+        if self.m_per_pxl is not None:
+            a_0 = -10 / self.m_per_pxl
 
         model = Model(self.k_displacement)
         params = Parameters()
         params.add("x_0", value=data[0], vary=False)
         params.add("v_0", value=1)
-        params.add("a", value=-10 / self.m_per_pxl)
+        params.add("a", value=a_0)
         self.y_fit_result = model.fit(data, t=ts, params=params)
+
+    def update_best_fit_values(self, force_user_update: bool = False):
+        x_0 = self.x_fit_result.best_values["x_0"]
+        v_0_x = self.x_fit_result.best_values["v_0"]
+        a_x = self.x_fit_result.best_values["a"]
+
+        y_0 = self.y_fit_result.best_values["x_0"]
+        v_0_y = self.y_fit_result.best_values["v_0"]
+        a_y = self.y_fit_result.best_values["a"]
+
+        v_0 = np.sqrt(v_0_x**2 + v_0_y**2)
+        theta = np.arctan(v_0_y / v_0_x)
+
+        self.best_fit_values = {
+            "x_0": x_0,
+            "v_0_x": v_0_x,
+            "a_x": a_x,
+            "y_0": y_0,
+            "v_0_y": v_0_y,
+            "a_y": a_y,
+            "v_0": v_0,
+            "theta": theta,
+        }
+
+        self.usr_exp_values["x_0"] = x_0
+        self.usr_exp_values["y_0"] = y_0
+
+        if force_user_update or self.usr_exp_values["v_0_x"] == 0:
+            self.usr_exp_values["v_0_x"] = v_0_x
+
+        if force_user_update or self.usr_exp_values["v_0_y"] == 0:
+            self.usr_exp_values["v_0_y"] = v_0_y
+
+        if force_user_update or self.usr_exp_values["gravity"] == 0:
+            self.usr_exp_values["gravity"] = a_y
+
+        if force_user_update or self.usr_exp_values["v_0"] == 0:
+            self.usr_exp_values["v_0"] = v_0
+
+        if force_user_update or self.usr_exp_values["theta"] == 0:
+            self.usr_exp_values["theta"] = theta
+
+    def fit_reports(self) -> str:
+        self.update_best_fit_values()
+
+        conv_fctr = 1 if self.m_per_pxl is None else self.m_per_pxl
+        units = "pxls" if self.m_per_pxl is None else "m"
+
+        fit_report = "  \n".join(
+            [
+                "---",
+                "# Fit results",
+                "## x-axis values:",
+                # f"* x_0 = {conv_fctr * self.best_fit_values['x_0']:.2f} {units}",
+                f"* v_0_x = {conv_fctr * self.best_fit_values['v_0_x']:.2f} {units}/s",
+                f"* a_x = {conv_fctr * self.best_fit_values['a_x']:.2f} {units}/s$^2$",
+                "## y-axis values:",
+                # f"* y_0 = {conv_fctr * self.best_fit_values['y_0']:.2f} {units}",
+                f"* v_0_y = {conv_fctr * self.best_fit_values['v_0_y']:.2f} {units}/s",
+                f"* a_y = g = {conv_fctr * self.best_fit_values['a_y']:.2f} {units}/s$^2$",
+                "## General values:",
+                f"* v_0 = {conv_fctr * self.best_fit_values['v_0']:.2f} {units}/s",
+                f"* theta = {180 / np.pi * self.best_fit_values['theta']:.2f} degrees",
+            ]
+        )
+
+        return fit_report
 
     @staticmethod
     def k_displacement(t, x_0, v_0, a):
         return x_0 + v_0 * t + 0.5 * a * t**2
+
+    #! User experimentation
+    def update_user_exp_params(
+        self,
+        param: str,
+        value: Union[int, float, np.float_],
+        theta_is_degrees: bool = True,
+    ):
+        print()
+        print(param)
+        print(value)
+
+        theta = self.usr_exp_values["theta"]
+
+        v_0 = self.usr_exp_values["v_0"]
+        v_0_x = self.usr_exp_values["v_0_x"]
+        v_0_y = self.usr_exp_values["v_0_y"]
+        theta = self.usr_exp_values["theta"]
+        gravity = self.usr_exp_values["gravity"]
+
+        if param in ["v_0", "v_0_x", "v_0_y", "gravity"]:
+            if self.m_per_pxl is not None:
+                value /= self.m_per_pxl
+
+        if param == "v_0":
+            v_0 = value
+            v_0_x = v_0 * np.cos(theta)
+            v_0_y = v_0 * np.sin(theta)
+        elif param == "v_0_x":
+            v_0_x = value
+            v_0 = np.sqrt(v_0_x**2 + v_0_y**2)
+            theta = np.arctan(v_0_y / v_0_x)
+        elif param == "v_0_y":
+            v_0_y = value
+            v_0 = np.sqrt(v_0_x**2 + v_0_y**2)
+            theta = np.arctan(v_0_y / v_0_x)
+        elif param == "theta":
+            if theta_is_degrees:
+                value = value * np.pi / 180
+            theta = value
+            v_0_x = v_0 * np.cos(theta)
+            v_0_y = v_0 * np.sin(theta)
+        elif param == "gravity":
+            gravity = value
+
+        self.usr_exp_values["v_0"] = float(v_0)
+        self.usr_exp_values["v_0_x"] = float(v_0_x)
+        self.usr_exp_values["v_0_y"] = float(v_0_y)
+        self.usr_exp_values["theta"] = float(theta)
+        self.usr_exp_values["gravity"] = float(gravity)
+
+        print(self.usr_exp_values["theta"])
+
+    #! Diagnostic functions
+    def save_obj(self):
+        print("save - start")
+        import pickle
+
+        params = dir(self)
+        save_dict = {}
+
+        # members = [attr for attr in dir(example) if not callable(getattr(example, attr)) and not attr.startswith("__")]
+
+        for param in params:
+            # if param[:2] == "__":
+            if callable(getattr(self, param)) and not param.startswith("__"):
+                continue
+
+            save_dict[param] = getattr(self, param)
+
+        fil = "/home/braden/Git_Repos/2d-Kinematics-Free-Fall/cls_vid_fbf.pkl"
+        with open(fil, "wb") as f:
+            pickle.dump(save_dict, f)
+
+        print("save - complete")
+
+    def load_obj(self):
+        print("load - start")
+        import pickle
+
+        fil = "/home/braden/Git_Repos/2d-Kinematics-Free-Fall/cls_vid_fbf.pkl"
+        with open(fil, "rb") as f:
+            load_dict = pickle.load(f)
+
+        for key in load_dict:
+            if key in dir(self):
+                setattr(self, key, load_dict[key])
+
+        print("load - complete")
 
 
 if __name__ == "__main__":

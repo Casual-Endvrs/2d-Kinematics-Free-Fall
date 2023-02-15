@@ -1,6 +1,7 @@
 import streamlit as st
 from multiapp import MultiApp
-from data_parameter_selection_app import app as setup_app
+from data_parameter_selection_app import setup_app
+from kinematics_visualization_app import visualization_app
 
 from cls_vid_fbf import vid_fbf
 
@@ -21,5 +22,6 @@ if "vid_fbf" not in st.session_state:
 app = MultiApp()
 
 app.add_app("Setup", setup_app)
+app.add_app("Visualization", visualization_app)
 
 app.run()
