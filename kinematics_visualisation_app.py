@@ -39,7 +39,7 @@ def update_force_a_x_zero():
     st.session_state["vid_fbf"].assume_a_x_zero = st.session_state["force_a_x_zero"]
 
 
-def visualization_app():
+def visualisation_app():
     #! Frame resolution
 
     if st.session_state["vid_fbf"].file_name is None:
