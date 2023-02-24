@@ -7,12 +7,15 @@ import tempfile
 #! make auto-advance on click an option
 
 
-def load_video():
+def load_video(video_file=None):
     if st.session_state["vid_fbf"].frames is None:
-        with tempfile.NamedTemporaryFile() as tmp_f:
-            video_file = st.session_state["source video"]
-            tmp_f.write(video_file.read())
-            st.session_state["vid_fbf"].load_video(tmp_f.name)
+        if video_file is None:
+            with tempfile.NamedTemporaryFile() as tmp_f:
+                video_file = st.session_state["source video"]
+                tmp_f.write(video_file.read())
+                st.session_state["vid_fbf"].load_video(tmp_f.name)
+        else:
+            st.session_state["vid_fbf"].load_video(video_file)
 
 
 def prep_frame_number():
@@ -67,6 +70,14 @@ def set_ref_len_meters():
     len_m = 0.01 * st.session_state["ref_length"]
     st.session_state["vid_fbf"].set_ref_len_meters(len_m)
     st.session_state["vid_fbf"].calc_m_per_pxl()
+
+
+def update_image_properties():
+    b_fctr = st.session_state["image_brightness"]
+    st.session_state["vid_fbf"].image_brightness_factor = b_fctr
+
+    c_fctr = st.session_state["image_contrast"]
+    st.session_state["vid_fbf"].image_contrast_factor = c_fctr
 
 
 def tst_img_coords_slctd():
@@ -176,12 +187,37 @@ def panel_mjr_actions():
 
     # 6. set image size
     with cols[5]:
+        frm_rt = st.session_state["vid_fbf"].frame_rate
+        st.write(f"Video frame rate: {frm_rt:.0f} fps")
+
         st.selectbox(
             "Image size",
             options=("original", "720p", "1080p", "2k"),
             index=0,
             key="display_res",
             on_change=change_resolution,
+        )
+
+        b_fctr = st.session_state["vid_fbf"].image_brightness_factor
+        st.slider(
+            "Image Brightness",
+            key="image_brightness",
+            value=b_fctr,
+            min_value=1.0,
+            max_value=100.0,
+            step=0.01,
+            on_change=update_image_properties,
+        )
+
+        b_fctr = st.session_state["vid_fbf"].image_contrast_factor
+        st.slider(
+            "Image contrast",
+            key="image_contrast",
+            value=b_fctr,
+            min_value=0.0,
+            max_value=2.0,
+            step=0.01,
+            on_change=update_image_properties,
         )
 
     curr_action = st.session_state["curr_activity"]
@@ -234,6 +270,13 @@ def setup_app():
             on_change=load_video,
             # label_visibility="hidden",
         )
+
+        st.button(
+            "Use Default Video",
+            on_click=load_video,
+            kwargs={"video_file": "./2D-Kinematics.mov"},
+            key="btn_use_dflt_vid",
+        )
     else:
         panel_mjr_actions()
 
@@ -242,3 +285,14 @@ def setup_app():
         tst_img_coords_slctd()
         display_frame()
         panel_frame_controls()
+
+        if st.session_state["vid_fbf"].x_fit_result is not None:
+            print()
+            print()
+            print()
+            print(st.session_state["vid_fbf"].x_fit_result.fit_report())
+
+            print()
+            print()
+            print()
+            print(st.session_state["vid_fbf"].y_fit_result.fit_report())

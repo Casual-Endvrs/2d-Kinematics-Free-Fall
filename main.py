@@ -5,6 +5,17 @@ from kinematics_visualization_app import visualization_app
 
 from cls_vid_fbf import vid_fbf
 
+#! Issues:
+#!  - Visualization App
+#!      - When theta=0, the user plot is showing theta=30*
+#!  - Conversions
+#!      - Could be dt
+#!      - Could be pxls/m
+
+#! Image rotation issue
+#!  - correct image rotation
+#!  - transform user values
+
 # Use the full width of the display for the dashboard
 st.set_page_config(layout="wide")
 

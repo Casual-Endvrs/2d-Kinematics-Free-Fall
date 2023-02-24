@@ -25,10 +25,13 @@ class vid_fbf:
         self.composite_image = None  # : Union[None, List[int]]
         self.fit_image = None  # : Union[None, List[int]]
 
-        self.bkgrnd_frm_num: int = 0
-        self.ball_radius = 15
         self.source_resolution: Union[None, List[int]] = None
         self.display_resolution: Union[None, str, List[int]] = None
+        self.image_brightness_factor: float = 1.0
+        self.image_contrast_factor: float = 1.0
+
+        self.ball_radius = 15
+        self.bkgrnd_frm_num: int = 0
         self.show_calibration_markers: bool = True
 
         #! 2D Kinematics specific variables
@@ -249,6 +252,7 @@ class vid_fbf:
             self.plot_plum_line_markers()
 
         self.resize_display_frame()
+        self.adjust_brightness_contrast()
 
     def get_frame(self, frame_num: Union[None, int] = None):
         self.prep_frame_num(frame_num)
@@ -262,6 +266,31 @@ class vid_fbf:
     def prep_next_frame(self):
         next_frame_idx = self.display_frame_num + 1
         self.prep_frame_num(next_frame_idx)
+
+    def adjust_brightness_contrast(
+        self, brightness: Union[None, float] = None, contrast: Union[None, float] = None
+    ):
+        print("adjust_brightness_contrast")
+
+        if brightness is None:
+            brightness = self.image_brightness_factor
+
+        print(f"    contrast: {contrast}")
+        if contrast is None:
+            print("contrast is None")
+            contrast = self.image_contrast_factor
+        print("-----")
+        print(f"    contrast: {contrast}")
+        print(f"    image_contrast_factor: {self.image_contrast_factor}")
+        print("~~~~~")
+        print(f"    brightness: {brightness}")
+        print(f"    image_brightness_factor: {self.image_brightness_factor}")
+
+        self.frame_image = cv2.convertScaleAbs(
+            self.frame_image, alpha=contrast, beta=brightness
+        )
+
+        print()
 
     #! ball markers
     def set_ball_frame_loc(self, ball_loc: Dict):
@@ -628,7 +657,7 @@ class vid_fbf:
         if self.assume_a_x_zero:
             theta_correction = np.arctan(a_x / a_y)
         elif self.image_theta is not None:
-            theta_correction = self.image_theta
+            theta_correction = -1 * self.image_theta
 
         if theta_correction is not None:
             cos_t = np.cos(theta_correction)
