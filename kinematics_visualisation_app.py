@@ -151,7 +151,7 @@ def visualisation_app():
             # assume a_x = 0
             val = st.session_state["vid_fbf"].assume_a_x_zero
             st.checkbox(
-                "Assume a_x = 0?",
+                r"Assume $a_{x}$ = 0?",
                 key="force_a_x_zero",
                 value=val,
                 on_change=update_force_a_x_zero,
