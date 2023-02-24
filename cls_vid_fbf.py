@@ -80,6 +80,8 @@ class vid_fbf:
 
         vidcap = cv2.VideoCapture(file_path)
         self.frame_rate = vidcap.get(cv2.CAP_PROP_FPS)
+        if self.frame_rate == 0:
+            self.frame_rate = 30
         self.frame_time = 1.0 / self.frame_rate
         src_frms = []
 
