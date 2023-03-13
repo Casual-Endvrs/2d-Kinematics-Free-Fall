@@ -281,7 +281,7 @@ def setup_app():
     #     st.button("Load Object", on_click=st.session_state["vid_fbf"].load_obj)
 
     if st.session_state["vid_fbf"].file_name is None:
-        print("\n" * 5)
+        # print("\n" * 5)
         st.file_uploader(
             label="Choose video:",
             type=["mp4", "mov"],
@@ -306,13 +306,13 @@ def setup_app():
         display_frame()
         panel_frame_controls()
 
-        if st.session_state["vid_fbf"].x_fit_result is not None:
-            print()
-            print()
-            print()
-            print(st.session_state["vid_fbf"].x_fit_result.fit_report())
+        # if st.session_state["vid_fbf"].x_fit_result is not None:
+        #     print()
+        #     print()
+        #     print()
+        #     print(st.session_state["vid_fbf"].x_fit_result.fit_report())
 
-            print()
-            print()
-            print()
-            print(st.session_state["vid_fbf"].y_fit_result.fit_report())
+        #     print()
+        #     print()
+        #     print()
+        #     print(st.session_state["vid_fbf"].y_fit_result.fit_report())

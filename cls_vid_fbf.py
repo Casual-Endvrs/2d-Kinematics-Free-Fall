@@ -83,12 +83,16 @@ class vid_fbf:
     def load_video(self, file_path: Path, resolution: str = "original"):
         self.display_frame_num = 0
 
+        print("load_video")
+
         vidcap = cv2.VideoCapture(file_path)
         self.frame_rate = vidcap.get(cv2.CAP_PROP_FPS)
         if self.frame_rate == 0:
             self.frame_rate = 30
         self.frame_time = 1.0 / self.frame_rate
         src_frms = []
+
+        print("while True")
 
         while True:
             is_frame, frame_img = vidcap.read()
@@ -98,6 +102,8 @@ class vid_fbf:
 
             src_frms.append(frame_img)
 
+        print("file_path")
+
         self.file_name = file_path
         self.frames_src = np.array(src_frms)
         self.ttl_frms = np.shape(self.frames_src)[0]
@@ -106,10 +112,19 @@ class vid_fbf:
         src_res = np.shape(self.frames_src[0])
         self.source_resolution = [src_res[1], src_res[0]]
 
+        print("set_display_resolution")
+
         self.set_display_resolution(resolution="original")
+
+        print("resize_video")
+
         self.resize_video(resolution)
 
+        print("prep_frame_num")
+
         self.prep_frame_num(frame_num=0)
+
+        print("load_video --> done")
 
     def set_display_resolution(
         self,
@@ -158,7 +173,7 @@ class vid_fbf:
                 src_res = np.shape(self.frames_src[0])
                 self.display_resolution = [src_res[1], src_res[0]]
 
-        print(f"display res --> {self.display_resolution}")
+        # print(f"display res --> {self.display_resolution}")
 
         self.resize_video()
 
@@ -268,27 +283,27 @@ class vid_fbf:
     def adjust_brightness_contrast(
         self, brightness: Union[None, float] = None, contrast: Union[None, float] = None
     ):
-        print("adjust_brightness_contrast")
+        # print("adjust_brightness_contrast")
 
         if brightness is None:
             brightness = self.image_brightness_factor
 
         print(f"    contrast: {contrast}")
         if contrast is None:
-            print("contrast is None")
+            # print("contrast is None")
             contrast = self.image_contrast_factor
-        print("-----")
-        print(f"    contrast: {contrast}")
-        print(f"    image_contrast_factor: {self.image_contrast_factor}")
-        print("~~~~~")
-        print(f"    brightness: {brightness}")
-        print(f"    image_brightness_factor: {self.image_brightness_factor}")
+        # print("-----")
+        # print(f"    contrast: {contrast}")
+        # print(f"    image_contrast_factor: {self.image_contrast_factor}")
+        # print("~~~~~")
+        # print(f"    brightness: {brightness}")
+        # print(f"    image_brightness_factor: {self.image_brightness_factor}")
 
         self.frame_image = cv2.convertScaleAbs(
             self.frame_image, alpha=contrast, beta=brightness
         )
 
-        print()
+        # print()
 
     #! ball markers
     def set_ball_frame_loc(self, ball_loc: Dict):
@@ -310,7 +325,7 @@ class vid_fbf:
         self.ball_frm_locs[self.display_frame_num, 1] = 0
 
     def plot_ball_marker(self):
-        print("plot_ball_marker")
+        # print("plot_ball_marker")
 
         ball_loc = self.ball_frm_locs[self.display_frame_num]
 
@@ -559,9 +574,9 @@ class vid_fbf:
 
         ts = self.frame_time * np.arange(np.shape(locs)[1])
 
-        print()
-        print(f"self.frame_time --> {self.frame_time}")
-        print()
+        # print()
+        # print(f"self.frame_time --> {self.frame_time}")
+        # print()
 
         locs = np.array([ts, locs[0], locs[1]])
         locs = locs.transpose()
@@ -817,44 +832,44 @@ class vid_fbf:
         self.usr_exp_values["theta"] = float(theta)
         self.usr_exp_values["gravity"] = float(gravity)
 
-        print('usr_exp_values["theta"] --> ', self.usr_exp_values["theta"])
+        # print('usr_exp_values["theta"] --> ', self.usr_exp_values["theta"])
 
     #! Diagnostic functions
-    def save_obj(self):
-        print("save - start")
-        import pickle
+    # def save_obj(self):
+    #     print("save - start")
+    #     import pickle
 
-        params = dir(self)
-        save_dict = {}
+    #     params = dir(self)
+    #     save_dict = {}
 
-        # members = [attr for attr in dir(example) if not callable(getattr(example, attr)) and not attr.startswith("__")]
+    #     # members = [attr for attr in dir(example) if not callable(getattr(example, attr)) and not attr.startswith("__")]
 
-        for param in params:
-            # if param[:2] == "__":
-            if callable(getattr(self, param)) and not param.startswith("__"):
-                continue
+    #     for param in params:
+    #         # if param[:2] == "__":
+    #         if callable(getattr(self, param)) and not param.startswith("__"):
+    #             continue
 
-            save_dict[param] = getattr(self, param)
+    #         save_dict[param] = getattr(self, param)
 
-        fil = "/home/braden/Git_Repos/2d-Kinematics-Free-Fall/cls_vid_fbf.pkl"
-        with open(fil, "wb") as f:
-            pickle.dump(save_dict, f)
+    #     fil = "/home/braden/Git_Repos/2d-Kinematics-Free-Fall/cls_vid_fbf.pkl"
+    #     with open(fil, "wb") as f:
+    #         pickle.dump(save_dict, f)
 
-        print("save - complete")
+    #     print("save - complete")
 
-    def load_obj(self):
-        print("load - start")
-        import pickle
+    # def load_obj(self):
+    #     print("load - start")
+    #     import pickle
 
-        fil = "/home/braden/Git_Repos/2d-Kinematics-Free-Fall/cls_vid_fbf.pkl"
-        with open(fil, "rb") as f:
-            load_dict = pickle.load(f)
+    #     fil = "/home/braden/Git_Repos/2d-Kinematics-Free-Fall/cls_vid_fbf.pkl"
+    #     with open(fil, "rb") as f:
+    #         load_dict = pickle.load(f)
 
-        for key in load_dict:
-            if key in dir(self):
-                setattr(self, key, load_dict[key])
+    #     for key in load_dict:
+    #         if key in dir(self):
+    #             setattr(self, key, load_dict[key])
 
-        print("load - complete")
+    #     print("load - complete")
 
 
 if __name__ == "__main__":

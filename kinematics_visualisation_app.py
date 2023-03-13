@@ -168,7 +168,7 @@ def visualisation_app():
         st.markdown(st.session_state["vid_fbf"].fit_reports())
 
         obj = st.session_state["vid_fbf"]
-        print(obj.frame_time)
+        # print(obj.frame_time)
         # print(obj.usr_exp_values["v_0_x"])
         # print(obj.usr_exp_values["v_0_y"])
         # print(obj.usr_exp_values["gravity"])
