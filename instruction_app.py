@@ -21,8 +21,7 @@ def instructions_app():
     2. Load the video into the program
     3. Find the first frame with the ball in free flight
     4. Click the center of the ball for each frame while the ball is in free flight, the program will automatically proceed to the next frame once a ball has been selected
-    5. From the action list at the top, select "Set Length Markers"
-    \t If you're using the default video, the grid in the background is 5cm by 5cm squares.
+    5. From the action list at the top, select "Set Length Markers" (If you're using the default video, the grid in the background is 5cm by 5cm squares.)
     6. Click on two points on the ruler where you know the distance between them
     7. Enter the distance between the two points, in centimeters, and hit "Enter"
     8. Click to go to the Visualisation page in the menu on the left
