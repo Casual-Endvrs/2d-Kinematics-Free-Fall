@@ -8,14 +8,23 @@ import tempfile
 
 
 def load_video(video_file=None):
+    print("1")
     if st.session_state["vid_fbf"].frames is None:
+        print("2")
         if video_file is None:
+            print("3")
             with tempfile.NamedTemporaryFile() as tmp_f:
+                print("4")
                 video_file = st.session_state["source video"]
+                print("5")
                 tmp_f.write(video_file.read())
+                print("6")
                 st.session_state["vid_fbf"].load_video(tmp_f.name)
+                print("7")
         else:
+            print("8")
             st.session_state["vid_fbf"].load_video(video_file)
+            print("9")
 
 
 def prep_frame_number():
