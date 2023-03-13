@@ -96,7 +96,7 @@ class vid_fbf:
             if not is_frame:
                 break
 
-            src_frms.append(frame_img[..., ::-1])
+            src_frms.append(frame_img)
 
         self.file_name = file_path
         self.frames_src = np.array(src_frms)
