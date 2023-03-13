@@ -40,12 +40,13 @@ class vid_fbf:
         self.plum_line_markers: Union[None, np.ndarray[(Any, 2), int]] = None
         self.image_theta: Union[None, float] = None
 
-        self.assume_a_x_zero: bool = False
+        self.assume_a_x_zero: bool = True
 
         self.x_fit_result = None
         self.y_fit_result = None
 
         self.best_fit_values: Union[None, Dict] = None
+        self.usr_exp_values_defined = False
         self.usr_exp_values: Dict = {
             "x_0": 0.0,
             "v_0_x": 0.0,
@@ -75,6 +76,10 @@ class vid_fbf:
         # self.theta_0: float = 0.0
         # self.gravity: float = 9.8
 
+    def set_video_frame_rate(self, frame_rate):
+        self.frame_rate = frame_rate
+        self.frame_time = 1.0 / self.frame_rate
+
     def load_video(self, file_path: Path, resolution: str = "original"):
         self.display_frame_num = 0
 
@@ -91,10 +96,7 @@ class vid_fbf:
             if not is_frame:
                 break
 
-            src_frms.append(frame_img)
-
-        print("Source size:")
-        print(f"\t{np.shape(src_frms[0])}")
+            src_frms.append(frame_img[..., ::-1])
 
         self.file_name = file_path
         self.frames_src = np.array(src_frms)
@@ -120,13 +122,11 @@ class vid_fbf:
 
         if height is not None:
             if height > src_sz[0]:
-                print(f"height > {src_sz[0]}")
                 self.frames = np.copy(self.frames_src)
                 return
             width = src_sz[1] * height / src_sz[0]
         elif width is not None:
             if width > src_sz[1]:
-                print(f"width > {src_sz[1]}")
                 self.frames = np.copy(self.frames_src)
                 return
             height = src_sz[0] * width / src_sz[1]
@@ -147,17 +147,11 @@ class vid_fbf:
             elif resolution in ["4320p", "8k"]:
                 height, width = 4320, 7680
             else:
-                print("resolution was not found")
                 height, width = None, None
 
-            print(f"using resolution --> {resolution}")
-            print(f"{width} x {height}")
-
         if None not in [width, height]:
-            print("setting new resolution")
             self.display_resolution = [width, height]
         else:
-            print("forcing original resolution")
             if self.frames_src is None:
                 self.display_resolution = None
             else:
@@ -231,6 +225,8 @@ class vid_fbf:
             self.frame_image = self.composite_image
 
             self.show_calibration_markers = False
+
+            self.update_best_fit_values()
 
         elif frame_num == -2:
             self.create_fit_frame()
@@ -380,7 +376,7 @@ class vid_fbf:
             self.plum_line_markers[0] = self.plum_line_markers[1]
             self.plum_line_markers[1] = x_y
 
-    def calc_frame_theta(self):
+    def calc_frame_theta_from_plumb_line(self):
         if self.plum_line_markers is None:
             self.image_theta = None
             print("invalid: self.plum_line_markers is None")
@@ -481,10 +477,13 @@ class vid_fbf:
         if None in [self.x_fit_result, self.y_fit_result]:
             self.fit_data()
 
-        draw_points = (
-            np.asarray([self.x_fit_result.best_fit, -1 * self.y_fit_result.best_fit]).T
-        ).astype(np.int32)
-        cv2.polylines(self.composite_image, [draw_points], False, (0, 255, 0))
+        if None not in [self.x_fit_result, self.y_fit_result]:
+            draw_points = (
+                np.asarray(
+                    [self.x_fit_result.best_fit, -1 * self.y_fit_result.best_fit]
+                ).T
+            ).astype(np.int32)
+            cv2.polylines(self.composite_image, [draw_points], False, (0, 255, 0))
 
         # num_data_pnts = np.shape(self.pos_m)[0]
 
@@ -504,46 +503,78 @@ class vid_fbf:
     def draw_user_line(self):
         self.update_best_fit_values()
 
-        num_data_pnts = np.shape(self.pos_pxls)[0]
+        if self.pos_pxls is not None:
+            num_data_pnts = np.shape(self.pos_pxls)[0]
 
-        steps_per_frm = 1
-        num_steps = steps_per_frm * num_data_pnts
-        t_max = self.frame_time * num_data_pnts
-        ts = np.linspace(0, t_max, num_steps)
-        # dt = self.frame_time / steps_per_frm
-        # ts = np.arange(0, t_max + dt, dt)
+            steps_per_frm = 1
+            num_steps = steps_per_frm * num_data_pnts
+            t_max = self.frame_time * num_data_pnts
+            ts = np.linspace(0, t_max, num_steps)
+            # dt = self.frame_time / steps_per_frm
+            # ts = np.arange(0, t_max + dt, dt)
 
-        x_0 = self.usr_exp_values["x_0"]
-        v_0_x = self.usr_exp_values["v_0_x"]
-        a_x = 0
-        y_0 = self.usr_exp_values["y_0"]
-        v_0_y = self.usr_exp_values["v_0_y"]
-        a_y = self.usr_exp_values["gravity"]
-        # v_0 = self.usr_exp_values["v_0"]
-        # theta = self.usr_exp_values["theta"]
+            x_0 = self.usr_exp_values["x_0"]
+            v_0_x = self.usr_exp_values["v_0_x"]
+            a_x = 0
+            y_0 = self.usr_exp_values["y_0"]
+            v_0_y = self.usr_exp_values["v_0_y"]
+            a_y = self.usr_exp_values["gravity"]
+            # v_0 = self.usr_exp_values["v_0"]
+            # theta = self.usr_exp_values["theta"]
 
-        xs = self.k_displacement(ts, x_0=x_0, v_0=v_0_x, a=a_x)
-        ys = self.k_displacement(ts, x_0=y_0, v_0=v_0_y, a=a_y)
+            xs = self.k_displacement(ts, x_0=x_0, v_0=v_0_x, a=a_x)
+            ys = self.k_displacement(ts, x_0=y_0, v_0=v_0_y, a=a_y)
 
-        draw_points = (np.asarray([xs, -1 * ys]).T).astype(np.int32)
-        cv2.polylines(self.composite_image, [draw_points], False, (255, 0, 0))
+            if self.image_theta is not None:
+                # [xs, ys] = self.rotate_vector([xs, ys], self.image_theta, rotate_about_first=True)
+
+                cos_theta = np.cos(-1 * self.image_theta)
+                sin_theta = np.sin(-1 * self.image_theta)
+
+                origin = np.array([xs[0], ys[0]])
+
+                xs -= origin[0]
+                ys -= origin[1]
+
+                pos_vec = np.array(list(zip(*[xs, ys])))
+                pos_vec = np.transpose(pos_vec)
+
+                rot_matrix = np.array([[cos_theta, -sin_theta], [sin_theta, cos_theta]])
+
+                pos_vec = np.matmul(rot_matrix, pos_vec)
+                pos_vec = np.transpose(pos_vec)
+
+                xs = np.array(pos_vec[:, 0])
+                ys = np.array(pos_vec[:, 1])
+
+                xs += origin[0]
+                ys += origin[1]
+
+            draw_points = (np.asarray([xs, -1 * ys]).T).astype(np.int32)
+            cv2.polylines(self.composite_image, [draw_points], False, (255, 0, 0))
 
     #! Equation variables
     def create_ball_pos_pxls(self):
         locs = np.copy(self.ball_frm_locs).transpose()
 
         ts = self.frame_time * np.arange(np.shape(locs)[1])
+
+        print()
+        print(f"self.frame_time --> {self.frame_time}")
+        print()
+
         locs = np.array([ts, locs[0], locs[1]])
         locs = locs.transpose()
 
         ball_has_pos = locs[:, 1] != 0
-        self.pos_pxls = locs[ball_has_pos, :]
+        if np.any(ball_has_pos):
+            self.pos_pxls = locs[ball_has_pos, :]
 
-        # t_0 = 0
-        self.pos_pxls[:, 0] -= self.pos_pxls[0, 0]
+            # t_0 = 0
+            self.pos_pxls[:, 0] -= self.pos_pxls[0, 0]
 
-        # inverting the y-axis
-        self.pos_pxls[:, 2] *= -1.0
+            # inverting the y-axis
+            self.pos_pxls[:, 2] *= -1.0
 
     def calc_ball_pos_meters(self):
         self.create_ball_pos_pxls()
@@ -575,121 +606,168 @@ class vid_fbf:
     def fit_x_data(self):
         self.create_ball_pos_pxls()
 
-        data = self.pos_pxls[:, 1]
-        ts = self.pos_pxls[:, 0]
+        if self.pos_pxls is not None:
+            data = self.pos_pxls[:, 1]
+            ts = self.pos_pxls[:, 0]
 
-        model = Model(self.k_displacement)
-        params = Parameters()
-        params.add("x_0", value=data[0], vary=False)
-        params.add("v_0", value=1)
-        params.add("a", value=0)
-        self.x_fit_result = model.fit(data, t=ts, params=params)
+            model = Model(self.k_displacement)
+            params = Parameters()
+            params.add("x_0", value=data[0], vary=False)
+            params.add("v_0", value=1)
+            params.add("a", value=0)
+            self.x_fit_result = model.fit(data, t=ts, params=params)
 
     def fit_y_data(self):
         self.create_ball_pos_pxls()
 
-        data = self.pos_pxls[:, 2]
-        ts = self.pos_pxls[:, 0]
+        if self.pos_pxls is not None:
+            data = self.pos_pxls[:, 2]
+            ts = self.pos_pxls[:, 0]
 
-        a_0 = 1e-2
-        if self.m_per_pxl is not None:
-            a_0 = -10 / self.m_per_pxl
+            a_0 = 1e-2
+            if self.m_per_pxl is not None:
+                a_0 = -10 / self.m_per_pxl
 
-        model = Model(self.k_displacement)
-        params = Parameters()
-        params.add("x_0", value=data[0], vary=False)
-        params.add("v_0", value=1)
-        params.add("a", value=a_0)
-        self.y_fit_result = model.fit(data, t=ts, params=params)
+            model = Model(self.k_displacement)
+            params = Parameters()
+            params.add("x_0", value=data[0], vary=False)
+            params.add("v_0", value=1)
+            params.add("a", value=a_0)
+            self.y_fit_result = model.fit(data, t=ts, params=params)
 
     def update_best_fit_values(self, force_user_update: bool = False):
-        x_0 = self.x_fit_result.best_values["x_0"]
-        v_0_x = self.x_fit_result.best_values["v_0"]
-        a_x = self.x_fit_result.best_values["a"]
+        if self.pos_pxls is not None:
+            x_0 = self.x_fit_result.best_values["x_0"]
+            v_0_x = self.x_fit_result.best_values["v_0"]
+            a_x = self.x_fit_result.best_values["a"]
 
-        y_0 = self.y_fit_result.best_values["x_0"]
-        v_0_y = self.y_fit_result.best_values["v_0"]
-        a_y = self.y_fit_result.best_values["a"]
+            y_0 = self.y_fit_result.best_values["x_0"]
+            v_0_y = self.y_fit_result.best_values["v_0"]
+            a_y = self.y_fit_result.best_values["a"]
 
-        v_0 = np.sqrt(v_0_x**2 + v_0_y**2)
-        theta = np.arctan(v_0_y / v_0_x)
+            v_0 = np.sqrt(v_0_x**2 + v_0_y**2)
+            theta = np.arctan(a_x / a_y)
 
-        self.best_fit_values = {
-            "x_0": x_0,
-            "v_0_x": v_0_x,
-            "a_x": a_x,
-            "y_0": y_0,
-            "v_0_y": v_0_y,
-            "a_y": a_y,
-            "v_0": v_0,
-            "theta": theta,
-        }
+            self.best_fit_values = {
+                "x_0": x_0,
+                "v_0_x": v_0_x,
+                "a_x": a_x,
+                "y_0": y_0,
+                "v_0_y": v_0_y,
+                "a_y": a_y,
+                "v_0": v_0,
+                "theta": theta,
+            }
 
-        self.usr_exp_values["x_0"] = x_0
-        self.usr_exp_values["y_0"] = y_0
+            self.usr_exp_values["x_0"] = x_0
+            self.usr_exp_values["y_0"] = y_0
 
-        if force_user_update or self.usr_exp_values["v_0_x"] == 0:
+            if force_user_update or not self.usr_exp_values_defined:
+                self.set_user_exp_to_fit_values()
+
+            if self.image_theta is None:
+                self.image_theta = theta
+
+    def set_user_exp_to_fit_values(self):
+        if self.pos_pxls is not None:
+            x_0 = self.x_fit_result.best_values["x_0"]
+            v_0_x = self.x_fit_result.best_values["v_0"]
+            a_x = self.x_fit_result.best_values["a"]
+
+            y_0 = self.y_fit_result.best_values["x_0"]
+            v_0_y = self.y_fit_result.best_values["v_0"]
+            a_y = self.y_fit_result.best_values["a"]
+
+            v_0 = np.sqrt(v_0_x**2 + v_0_y**2)
+            theta = np.arctan(v_0_y / v_0_x)
+
+            self.usr_exp_values["x_0"] = x_0
+            self.usr_exp_values["y_0"] = y_0
+
+            theta_rotate = np.arctan(a_x / a_y)
+            [a_x, a_y] = self.rotate_vector([a_x, a_y], theta_rotate)
+            [v_0_x, v_0_y] = self.rotate_vector([v_0_x, v_0_y], theta_rotate)
             self.usr_exp_values["v_0_x"] = v_0_x
-
-        if force_user_update or self.usr_exp_values["v_0_y"] == 0:
             self.usr_exp_values["v_0_y"] = v_0_y
-
-        if force_user_update or self.usr_exp_values["gravity"] == 0:
             self.usr_exp_values["gravity"] = a_y
-
-        if force_user_update or self.usr_exp_values["v_0"] == 0:
             self.usr_exp_values["v_0"] = v_0
+            self.usr_exp_values["theta"] = theta + theta_rotate
 
-        if force_user_update or self.usr_exp_values["theta"] == 0:
-            self.usr_exp_values["theta"] = theta
+            self.usr_exp_values_defined = True
 
     def fit_reports(self) -> str:
         self.update_best_fit_values()
 
-        conv_fctr = 1 if self.m_per_pxl is None else self.m_per_pxl
-        units = "pxls" if self.m_per_pxl is None else "m"
+        if self.pos_pxls is not None:
+            conv_fctr = 1 if self.m_per_pxl is None else self.m_per_pxl
+            units = "pxls" if self.m_per_pxl is None else "m"
 
-        a_x = self.best_fit_values["a_x"]
-        a_y = self.best_fit_values["a_y"]
-        v_0_x = self.best_fit_values["v_0_x"]
-        v_0_y = self.best_fit_values["v_0_y"]
-        theta = self.best_fit_values["theta"]
+            a_x = self.best_fit_values["a_x"]
+            a_y = self.best_fit_values["a_y"]
+            v_0_x = self.best_fit_values["v_0_x"]
+            v_0_y = self.best_fit_values["v_0_y"]
+            theta = self.best_fit_values["theta"]
 
-        theta_correction = None
-        if self.assume_a_x_zero:
-            theta_correction = np.arctan(a_x / a_y)
-        elif self.image_theta is not None:
-            theta_correction = -1 * self.image_theta
+            theta_correction = None
+            if self.assume_a_x_zero:
+                theta_correction = np.arctan(a_x / a_y)
+            elif self.image_theta is not None:
+                theta_correction = -1 * self.image_theta
 
-        if theta_correction is not None:
-            cos_t = np.cos(theta_correction)
-            sin_t = np.sin(theta_correction)
+            if theta_correction is not None:
+                [v_0_x, v_0_y] = self.rotate_vector([v_0_x, v_0_y], theta_correction)
+                [a_x, a_y] = self.rotate_vector([a_x, a_y], theta_correction)
+                # cos_t = np.cos(theta_correction)
+                # sin_t = np.sin(theta_correction)
 
-            R = np.array([[cos_t, -sin_t], [sin_t, cos_t]])
-            [v_0_x, v_0_y] = R @ np.array([v_0_x, v_0_y])
-            [a_x, a_y] = R @ np.array([a_x, a_y])
+                # R = np.array([[cos_t, -sin_t], [sin_t, cos_t]])
+                # [v_0_x, v_0_y] = R @ np.array([v_0_x, v_0_y])
+                # [a_x, a_y] = R @ np.array([a_x, a_y])
 
-            theta += theta_correction
+                theta += theta_correction
 
-        fit_report = "  \n".join(
-            [
-                "---",
-                "# Fit results",
-                "## x-axis values:",
-                # f"* x_0 = {conv_fctr * self.best_fit_values['x_0']:.2f} {units}",
-                f"* v_0_x = {conv_fctr * v_0_x:.2f} {units}/s",
-                f"* a_x = {conv_fctr * a_x:.2f} {units}/s$^2$",
-                "## y-axis values:",
-                # f"* y_0 = {conv_fctr * self.best_fit_values['y_0']:.2f} {units}",
-                f"* v_0_y = {conv_fctr * v_0_y:.2f} {units}/s",
-                f"* a_y = g = {conv_fctr * a_y:.2f} {units}/s$^2$",
-                "## General values:",
-                f"* v_0 = {conv_fctr * self.best_fit_values['v_0']:.2f} {units}/s",
-                f"* theta = {180 / np.pi * theta:.2f} degrees",
-            ]
-        )
+            fit_report = "  \n".join(
+                [
+                    "---",
+                    "# Fit results",
+                    "## x-axis values:",
+                    # f"* x_0 = {conv_fctr * self.best_fit_values['x_0']:.2f} {units}",
+                    f"* v_0_x = {conv_fctr * v_0_x:.2f} {units}/s",
+                    f"* a_x = {conv_fctr * a_x:.2f} {units}/s$^2$",
+                    "## y-axis values:",
+                    # f"* y_0 = {conv_fctr * self.best_fit_values['y_0']:.2f} {units}",
+                    f"* v_0_y = {conv_fctr * v_0_y:.2f} {units}/s",
+                    f"* a_y = g = {conv_fctr * a_y:.2f} {units}/s$^2$",
+                    "## General values:",
+                    f"* v_0 = {conv_fctr * self.best_fit_values['v_0']:.2f} {units}/s",
+                    f"* theta = {180 / np.pi * theta:.2f} degrees",
+                ]
+            )
 
-        return fit_report
+            return fit_report
+
+    def rotate_vector(self, vector, angle, rotate_about_first=False):
+        """
+        vector --> [xs, ys]
+        """
+        vector = np.array(vector)
+
+        origin = [vector[0], vector[1]]
+        if rotate_about_first:
+            vector[0] -= origin[0]
+            vector[1] -= origin[1]
+
+        cos_t = np.cos(angle)
+        sin_t = np.sin(angle)
+
+        R = np.array([[cos_t, -sin_t], [sin_t, cos_t]])
+        vector = R @ vector
+
+        if rotate_about_first:
+            vector[0] += origin[0]
+            vector[1] += origin[1]
+
+        return vector
 
     @staticmethod
     def k_displacement(t, x_0, v_0, a):
@@ -702,12 +780,6 @@ class vid_fbf:
         value: Union[int, float, np.float_],
         theta_is_degrees: bool = True,
     ):
-        print()
-        print(param)
-        print(value)
-
-        theta = self.usr_exp_values["theta"]
-
         v_0 = self.usr_exp_values["v_0"]
         v_0_x = self.usr_exp_values["v_0_x"]
         v_0_y = self.usr_exp_values["v_0_y"]
@@ -745,7 +817,7 @@ class vid_fbf:
         self.usr_exp_values["theta"] = float(theta)
         self.usr_exp_values["gravity"] = float(gravity)
 
-        print(self.usr_exp_values["theta"])
+        print('usr_exp_values["theta"] --> ', self.usr_exp_values["theta"])
 
     #! Diagnostic functions
     def save_obj(self):

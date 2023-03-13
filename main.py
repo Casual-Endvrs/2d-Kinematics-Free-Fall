@@ -1,5 +1,6 @@
 import streamlit as st
 from multiapp import MultiApp
+from instruction_app import instructions_app
 from data_parameter_selection_app import setup_app
 from kinematics_visualisation_app import visualisation_app
 
@@ -15,6 +16,9 @@ from cls_vid_fbf import vid_fbf
 #! Image rotation issue
 #!  - correct image rotation
 #!  - transform user values
+
+# RGB Corrected
+# Forced a_x=0 and removed plumb lin option
 
 # Use the full width of the display for the dashboard
 st.set_page_config(layout="wide")
@@ -32,7 +36,8 @@ if "vid_fbf" not in st.session_state:
 
 app = MultiApp()
 
-app.add_app("Setup", setup_app)
+app.add_app("Instructions", instructions_app)
+app.add_app("Data Point Selection", setup_app)
 app.add_app("Visualisation", visualisation_app)
 
 app.run()

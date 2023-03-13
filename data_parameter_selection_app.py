@@ -72,6 +72,12 @@ def set_ref_len_meters():
     st.session_state["vid_fbf"].calc_m_per_pxl()
 
 
+def set_video_frame_rate():
+    frm_rt = st.session_state["vid_frm_rt"]
+
+    st.session_state["vid_fbf"].set_video_frame_rate(frm_rt)
+
+
 def update_image_properties():
     b_fctr = st.session_state["image_brightness"]
     st.session_state["vid_fbf"].image_brightness_factor = b_fctr
@@ -112,7 +118,7 @@ def tst_img_coords_slctd():
 def panel_mjr_actions():
     st.write("Section action to perform:")
 
-    cols = st.columns(6)
+    cols = st.columns(5)
     # 1. ball location
     with cols[0]:
         lbl = "Set Ball Location"
@@ -138,11 +144,17 @@ def panel_mjr_actions():
             on_click=set_curr_activity,
             args=(lbl,),
         )
+        rel_len_m = (
+            0
+            if st.session_state["vid_fbf"].ref_len_m is None
+            else st.session_state["vid_fbf"].ref_len_m
+        )
         st.number_input(
             "Length between markers (centimeters)",
             key="ref_length",
             min_value=0.0,
             format="%.3f",
+            value=100.0 * rel_len_m,
             on_change=set_ref_len_meters,
         )
         if st.session_state["vid_fbf"].m_per_pxl in [0, 0.0, None]:
@@ -155,20 +167,20 @@ def panel_mjr_actions():
         st.write(f"meters/pixel --> {m_per_pxl}")
         st.write(f"pixel/meters --> {pxl_per_m}")
 
-    # 3. plum line
-    with cols[2]:
-        lbl = "Set Plum Line"
-        st.button(lbl, key="btn_plum_line", on_click=set_curr_activity, args=(lbl,))
-        if st.session_state["vid_fbf"].image_theta is None:
-            theta = "undefined"
-        else:
-            theta_val = st.session_state["vid_fbf"].image_theta * 180 / np.pi
-            theta = f"{theta_val:.2f} degrees"
-        st.write(f"image rotation --> {theta} degrees")
-        #! option to zoom on 1st click
+    # # 3. plum line
+    # with cols[2]:
+    #     lbl = "Set Plum Line"
+    #     st.button(lbl, key="btn_plum_line", on_click=set_curr_activity, args=(lbl,))
+    #     if st.session_state["vid_fbf"].image_theta is None:
+    #         theta = "undefined"
+    #     else:
+    #         theta_val = st.session_state["vid_fbf"].image_theta * 180 / np.pi
+    #         theta = f"{theta_val:.2f} degrees"
+    #     st.write(f"image rotation --> {theta} degrees")
+    #     #! option to zoom on 1st click
 
     # 4. set background frame
-    with cols[3]:
+    with cols[2]:
         st.button(
             "Set Background Frame",
             key="btn_set_bkgrnd_frm",
@@ -178,7 +190,7 @@ def panel_mjr_actions():
         st.write(f"Frame to use as background: {bkrnd_frm}")
 
     # 5. process results & obtain fit
-    with cols[4]:
+    with cols[3]:
         st.button(
             "Show Composite Image",
             key="btn_composite_img",
@@ -186,9 +198,17 @@ def panel_mjr_actions():
         )
 
     # 6. set image size
-    with cols[5]:
-        frm_rt = st.session_state["vid_fbf"].frame_rate
-        st.write(f"Video frame rate: {frm_rt:.0f} fps")
+    with cols[4]:
+        # frm_rt = st.session_state["vid_fbf"].frame_rate
+        # st.write(f"Video frame rate: {frm_rt:.2f} fps")
+        st.number_input(
+            "Video frame rate: ",
+            key="vid_frm_rt",
+            min_value=0.0,
+            format="%.3f",
+            value=st.session_state["vid_fbf"].frame_rate,
+            on_change=set_video_frame_rate,
+        )
 
         st.selectbox(
             "Image size",

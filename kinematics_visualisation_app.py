@@ -48,7 +48,7 @@ def visualisation_app():
         )
     else:
         st.button(
-            "Reset Values",
+            "Reset to Best Fit Valuse",
             on_click=st.session_state["vid_fbf"].update_best_fit_values,
             kwargs={"force_user_update": True},
         )
@@ -62,17 +62,25 @@ def visualisation_app():
         )
 
         if st.session_state["vid_fbf"].m_per_pxl is None:
-            max_v = 2000.0
+            max_v = 5000.0
+            units = "pxls"
         else:
             max_v = 5.0
+            units = "m"
 
-        print(m_per_pxl)
+        with cols[1]:
+            display_frame()
+            # frame = st.session_state["vid_fbf"].get_frame(-2)
+            # sic(
+            #     Image.fromarray(frame),
+            #     key="composite_image",
+            # )
 
         with cols[0]:
             # v_0
             val = float(m_per_pxl * st.session_state["vid_fbf"].usr_exp_values["v_0"])
             st.slider(
-                label="$v_0$",
+                label="$v_0$ " + f" [{units}/s]",
                 key="v_0",
                 min_value=0.0,
                 max_value=max_v,
@@ -87,7 +95,7 @@ def visualisation_app():
             # v_0_x
             val = float(m_per_pxl * st.session_state["vid_fbf"].usr_exp_values["v_0_x"])
             st.slider(
-                label="$v_{0,x}$",
+                label="$v_{0,x}$" + f" [{units}/s]",
                 key="v_0_x",
                 min_value=0.0,
                 max_value=max_v,
@@ -102,7 +110,7 @@ def visualisation_app():
             # v_0_y
             val = float(m_per_pxl * st.session_state["vid_fbf"].usr_exp_values["v_0_y"])
             st.slider(
-                label="$v_{0,y}$",
+                label="$v_{0,y}$" + f" [{units}/s]",
                 key="v_0_y",
                 min_value=0.0,
                 max_value=max_v,
@@ -119,12 +127,12 @@ def visualisation_app():
                 180 / np.pi * st.session_state["vid_fbf"].usr_exp_values["theta"]
             )
             st.slider(
-                label=r"$\theta_{0}$",
+                label=r"$\theta_{0}^{\circ}$",
                 key="theta",
                 min_value=-45.0,
                 max_value=90.0,
                 value=val,
-                step=1.0,
+                step=0.1,
                 format=None,
                 help=None,
                 on_change=set_param,
@@ -136,10 +144,10 @@ def visualisation_app():
                 m_per_pxl * st.session_state["vid_fbf"].usr_exp_values["gravity"]
             )
             st.slider(
-                label="gravity",
+                label="gravity" + f" [{units}" + "/$s^2$]",
                 key="gravity",
-                min_value=-25.0,
-                max_value=5.0,
+                min_value=-4.0 * max_v,
+                max_value=max_v,
                 value=val,
                 step=0.1,
                 format=None,
@@ -148,21 +156,21 @@ def visualisation_app():
                 args=("gravity",),
             )
 
-            # assume a_x = 0
-            val = st.session_state["vid_fbf"].assume_a_x_zero
-            st.checkbox(
-                r"Assume $a_{x}$ = 0?",
-                key="force_a_x_zero",
-                value=val,
-                on_change=update_force_a_x_zero,
-            )
-
-        with cols[1]:
-            display_frame()
-            # frame = st.session_state["vid_fbf"].get_frame(-2)
-            # sic(
-            #     Image.fromarray(frame),
-            #     key="composite_image",
+            # # assume a_x = 0
+            # val = st.session_state["vid_fbf"].assume_a_x_zero
+            # st.checkbox(
+            #     r"Assume $a_{x}$ = 0?",
+            #     key="force_a_x_zero",
+            #     value=val,
+            #     on_change=update_force_a_x_zero,
             # )
 
         st.markdown(st.session_state["vid_fbf"].fit_reports())
+
+        obj = st.session_state["vid_fbf"]
+        print(obj.frame_time)
+        # print(obj.usr_exp_values["v_0_x"])
+        # print(obj.usr_exp_values["v_0_y"])
+        # print(obj.usr_exp_values["gravity"])
+        # print(obj.usr_exp_values["v_0"])
+        # print(obj.usr_exp_values["theta"])
