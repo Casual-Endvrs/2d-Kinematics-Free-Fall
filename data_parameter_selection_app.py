@@ -293,7 +293,7 @@ def setup_app():
         )
 
         st.button(
-            "Default Video --> Green Ball",
+            "Default Video --> Blue Ball",
             on_click=load_video,
             kwargs={"video_file": "./blue_ball.mp4"},
             key="btn_use_blue_ball_vid",
