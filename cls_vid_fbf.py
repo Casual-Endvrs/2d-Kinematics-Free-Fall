@@ -10,6 +10,7 @@ from typing import Union, List, Any, Dict
 
 import streamlit as st
 
+
 class vid_fbf:
     # Class to store a video frame-by-frame with per-frame information.
 
@@ -97,12 +98,6 @@ class vid_fbf:
         self.ttl_frms = np.shape(self.frames_src)[0]
         self.ball_frm_locs = np.zeros((self.ttl_frms, 2), dtype=int)
 
-        print(np.shape(self.frames_src))
-        st.write(np.shape(self.frames_src))
-        return
-
-        # src_res = np.shape(self.frames_src[0])[:1]
-        # self.source_resolution = [src_res[1], src_res[0]]
         self.source_resolution = np.shape(self.frames_src[0])[:2]
 
         self.set_display_resolution(resolution="original")
