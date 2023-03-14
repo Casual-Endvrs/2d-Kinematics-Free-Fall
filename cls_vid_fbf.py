@@ -69,13 +69,6 @@ class vid_fbf:
         self.pos_pxls: Union[None, np.ndarray[(Any, 2), int]] = None
         self.pos_m: Union[None, np.ndarray[(Any, 2), float]] = None
 
-        #! User experimentation
-        # self.v_0: float = 0.0
-        # self.v_0_x: float = 0.0
-        # self.v_0_y: float = 0.0
-        # self.theta_0: float = 0.0
-        # self.gravity: float = 9.8
-
     def set_video_frame_rate(self, frame_rate):
         self.frame_rate = frame_rate
         self.frame_time = 1.0 / self.frame_rate
@@ -83,16 +76,12 @@ class vid_fbf:
     def load_video(self, file_path: Path, resolution: str = "original"):
         self.display_frame_num = 0
 
-        print("load_video")
-
         vidcap = cv2.VideoCapture(file_path)
         self.frame_rate = vidcap.get(cv2.CAP_PROP_FPS)
         if self.frame_rate == 0:
             self.frame_rate = 30
         self.frame_time = 1.0 / self.frame_rate
         src_frms = []
-
-        print("while True")
 
         while True:
             is_frame, frame_img = vidcap.read()
@@ -102,29 +91,20 @@ class vid_fbf:
 
             src_frms.append(frame_img)
 
-        print("file_path")
-
         self.file_name = file_path
         self.frames_src = np.array(src_frms)
         self.ttl_frms = np.shape(self.frames_src)[0]
         self.ball_frm_locs = np.zeros((self.ttl_frms, 2), dtype=int)
 
-        src_res = np.shape(self.frames_src[0])
-        self.source_resolution = [src_res[1], src_res[0]]
-
-        print("set_display_resolution")
+        # src_res = np.shape(self.frames_src[0])[:1]
+        # self.source_resolution = [src_res[1], src_res[0]]
+        self.source_resolution = np.shape(self.frames_src[0])[:1]
 
         self.set_display_resolution(resolution="original")
 
-        print("resize_video")
-
         self.resize_video(resolution)
 
-        print("prep_frame_num")
-
         self.prep_frame_num(frame_num=0)
-
-        print("load_video --> done")
 
     def set_display_resolution(
         self,
