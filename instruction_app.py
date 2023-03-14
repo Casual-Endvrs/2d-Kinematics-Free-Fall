@@ -5,12 +5,15 @@ def instructions_app():
     instructions_txt = """
     This experiment can be used to measure the acceleration due to gravity.
 
+    ## Issue Note:
+    Currently there is an issue loading videos with the website version. To use the website version please use the default video. If you would like to use your own video, please get the files from github and run the local version.
+
     ## Equipment requirements:
     1. Phone to record video
     2. Ruler to determine video scale
     3. A ball to toss
 
-    ## Proceedure - Recording (Not required if you use the available default video):
+    ## Proceedure - Recording:
     1. Set the phone up 3-4 meters (12-16 feet) away from a wall
     2. Tape the ruler to the wall
     3. Start recording a video

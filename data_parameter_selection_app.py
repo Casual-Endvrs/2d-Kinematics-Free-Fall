@@ -8,23 +8,14 @@ import tempfile
 
 
 def load_video(video_file=None):
-    print("1")
     if st.session_state["vid_fbf"].frames is None:
-        print("2")
         if video_file is None:
-            print("3")
             with tempfile.NamedTemporaryFile() as tmp_f:
-                print("4")
                 video_file = st.session_state["source video"]
-                print("5")
                 tmp_f.write(video_file.read())
-                print("6")
                 st.session_state["vid_fbf"].load_video(tmp_f.name)
-                print("7")
         else:
-            print("8")
             st.session_state["vid_fbf"].load_video(video_file)
-            print("9")
 
 
 def prep_frame_number():
@@ -283,12 +274,6 @@ def panel_frame_controls():
 def setup_app():
     st.session_state["vid_fbf"].show_calibration_markers = True
 
-    # cols = st.columns([1, 1, 10])
-    # with cols[0]:
-    #     st.button("Save Object", on_click=st.session_state["vid_fbf"].save_obj)
-    # with cols[1]:
-    #     st.button("Load Object", on_click=st.session_state["vid_fbf"].load_obj)
-
     if st.session_state["vid_fbf"].file_name is None:
         # print("\n" * 5)
         st.file_uploader(
@@ -301,10 +286,17 @@ def setup_app():
         )
 
         st.button(
-            "Use Default Video",
+            "Default Video --> Green Ball",
             on_click=load_video,
-            kwargs={"video_file": "./2D-Kinematics.mov"},
-            key="btn_use_dflt_vid",
+            kwargs={"video_file": "./green_ball.mp4"},
+            key="btn_use_grn_ball_vid",
+        )
+
+        st.button(
+            "Default Video --> Green Ball",
+            on_click=load_video,
+            kwargs={"video_file": "./blue_ball.mp4"},
+            key="btn_use_blue_ball_vid",
         )
     else:
         panel_mjr_actions()
@@ -314,14 +306,3 @@ def setup_app():
         tst_img_coords_slctd()
         display_frame()
         panel_frame_controls()
-
-        # if st.session_state["vid_fbf"].x_fit_result is not None:
-        #     print()
-        #     print()
-        #     print()
-        #     print(st.session_state["vid_fbf"].x_fit_result.fit_report())
-
-        #     print()
-        #     print()
-        #     print()
-        #     print(st.session_state["vid_fbf"].y_fit_result.fit_report())

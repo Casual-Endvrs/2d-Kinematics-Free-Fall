@@ -832,45 +832,6 @@ class vid_fbf:
         self.usr_exp_values["theta"] = float(theta)
         self.usr_exp_values["gravity"] = float(gravity)
 
-        # print('usr_exp_values["theta"] --> ', self.usr_exp_values["theta"])
-
-    #! Diagnostic functions
-    # def save_obj(self):
-    #     print("save - start")
-    #     import pickle
-
-    #     params = dir(self)
-    #     save_dict = {}
-
-    #     # members = [attr for attr in dir(example) if not callable(getattr(example, attr)) and not attr.startswith("__")]
-
-    #     for param in params:
-    #         # if param[:2] == "__":
-    #         if callable(getattr(self, param)) and not param.startswith("__"):
-    #             continue
-
-    #         save_dict[param] = getattr(self, param)
-
-    #     fil = "/home/braden/Git_Repos/2d-Kinematics-Free-Fall/cls_vid_fbf.pkl"
-    #     with open(fil, "wb") as f:
-    #         pickle.dump(save_dict, f)
-
-    #     print("save - complete")
-
-    # def load_obj(self):
-    #     print("load - start")
-    #     import pickle
-
-    #     fil = "/home/braden/Git_Repos/2d-Kinematics-Free-Fall/cls_vid_fbf.pkl"
-    #     with open(fil, "rb") as f:
-    #         load_dict = pickle.load(f)
-
-    #     for key in load_dict:
-    #         if key in dir(self):
-    #             setattr(self, key, load_dict[key])
-
-    #     print("load - complete")
-
 
 if __name__ == "__main__":
     file_path = "/home/braden/Git_Repos/test_video_processing/20230131_220018.mp4"
