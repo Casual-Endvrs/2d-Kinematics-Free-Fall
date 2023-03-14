@@ -276,13 +276,21 @@ def setup_app():
 
     if st.session_state["vid_fbf"].file_name is None:
         # print("\n" * 5)
-        st.file_uploader(
-            label="Choose video:",
-            type=["mp4", "mov"],
-            accept_multiple_files=False,
-            key="source video",
-            on_change=load_video,
-            # label_visibility="hidden",
+        # st.file_uploader(
+        #     label="Choose video:",
+        #     type=["mp4", "mov"],
+        #     accept_multiple_files=False,
+        #     key="source video",
+        #     on_change=load_video,
+        #     # label_visibility="hidden",
+        # )
+
+        st.write(
+            """Unfortunately, the ability to upload a video is experiencing issue with the online version.
+            The default videos do work and give good results. The error is about 3-3.5%.
+            To use a video of your own, please download the code from github and run it locally.
+            Source: https://github.com/Casual-Endvrs/2d-Kinematics-Free-Fall
+            """
         )
 
         st.button(
